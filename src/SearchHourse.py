@@ -35,9 +35,6 @@ class SearchHourse :
 
         self.logpath = "./" + datetime.datetime.now().strftime('%Y-%m-%d') + ".tmp"
 
-        reload(sys)
-        #sys.setdefaultencoding('utf-8')
-
     def create_message(self, from_addr, to_addr, subject, body, mime=None, attach_file=None):
         """
             create mail message
@@ -174,5 +171,8 @@ class SearchHourse :
         return 0
 
 if __name__ == "__main__":
+    reload(sys)
+    sys.setdefaultencoding('utf-8')
+    
     object = SearchHourse()
     object.search()
