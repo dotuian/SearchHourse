@@ -26,12 +26,12 @@ from bs4 import BeautifulSoup
 class SearchHourse :
 
     def __init__(self):
-        self.SMTP = "mail.siriuscloud.jp"
+        self.SMTP = "mail.xxxx.jp"
         self.PORT = "587"
-        self.USERNAME ="dotuian@siriuscloud.jp"
+        self.USERNAME ="xxxx@xxxx.jp"
         self.PASSWARD = 'test1234'
-        #self.TO = ["dotuian@outlook.com", "idwh.huli@gmail.com"]
-        self.TO = ["shoukii@kai.jp"]
+        #self.TO = ["xxxx@xxxx.com", "xxxx@gmail.com"]
+        self.TO = ["xxxx@xxxx.com"]
 
         self.logpath = "./" + datetime.datetime.now().strftime('%Y-%m-%d') + ".tmp"
 
