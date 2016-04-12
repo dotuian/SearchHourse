@@ -29,7 +29,7 @@ class SearchHourse :
         self.SMTP = "mail.xxxx.jp"
         self.PORT = "587"
         self.USERNAME ="xxxx@xxxx.jp"
-        self.PASSWARD = 'test1234'
+        self.PASSWARD = 'xxxx'
         #self.TO = ["xxxx@xxxx.com", "xxxx@gmail.com"]
         self.TO = ["xxxx@xxxx.com"]
 
