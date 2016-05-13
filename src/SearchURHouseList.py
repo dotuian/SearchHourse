@@ -15,6 +15,7 @@ from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 from email.utils import formatdate
 from email.mime.base import MIMEBase
+from email.header import Header
 
 from bs4 import BeautifulSoup
 
@@ -25,7 +26,9 @@ from bs4 import BeautifulSoup
 # pip install email
 # ==========================================
 
+
 class FileUtils(object):
+    ''' 文件读写工具类 '''
     @classmethod
     def get_all_content(self, path):
         content = ""
@@ -38,33 +41,89 @@ class FileUtils(object):
         file = codecs.open(path, 'w', "utf_8")
         file.write(content)
         file.close()
-
-class URHouseList(object):
-
-    def __init__(self, enterpoint):
-        # 团地一览的url
-        self.enterpoint = enterpoint
-        self.urls = self.get_all_urls()
-        self.houses = self.get_all_house()
+        
+class SendMailer(object):
+    ''' 邮件发送类 '''
     
+    def __init__(self, to, subject, body):
+        #送信服务器配置 
+        self.SMTP = "mail.xxxxxx.jp"
+        self.PORT = "587"
+        self.USERNAME ="xxxxxx@xxxxxx.jp"
+        self.PASSWARD = 'xxxxxx'
+        
+        self.to = to
+        self.subject = subject
+        self.body =body
+        
+    def sendmail(self):
+        ''' 发送邮件 '''
+        message = MIMEMultipart("alternative")
+        message.set_charset("utf-8")
+        
+        message["From"] = self.USERNAME
+        message["To"] = self.USERNAME
+        message["Date"] = formatdate()
+        message["Subject"] = Header(self.subject.encode('utf-8'), 'UTF-8').encode()
+
+        body = MIMEText(self.body.encode('utf-8'), 'plain','utf-8')
+        #body = MIMEText(body, 'plain','utf-8')
+        message.attach(body)
+
+        #发信操作        
+        smtpobj = smtplib.SMTP(self.SMTP, self.PORT)
+        smtpobj.ehlo()
+        smtpobj.starttls()
+        smtpobj.ehlo()
+        smtpobj.login(self.USERNAME, self.PASSWARD)
+        smtpobj.sendmail(self.USERNAME, self.to, message.as_string())
+        smtpobj.close()
+
+
+class URHouseManager(object):
+    ''' 团地信息管理类  '''
+    def __init__(self, *args, **kwargs):
+        #初始化准备
+        self.houses = []
+        self.urls = []
+        self.discount = 0 #优惠团地个数
+        self.path = "./result.txt" #检索结果保存 
+        
+        #根据参数的不同，来执行不同的操作
+        enterpoint = kwargs.get('enterpoint') 
+        if enterpoint:
+            #自动抓取所有团地信息
+            self.urls = self.get_all_urls(enterpoint)
+            #获取所有团地的信息
+            self.houses = self.get_all_house()            
+        else:
+            #获取指定团地的信息
+            self.urls = kwargs.get('urls')
+            #获取指定团地的信息
+            self.houses = self.get_all_house()
+
+
     def get_all_house(self): 
         houses = []
         
         #self.urls = self.urls[-3:]
         
-        for url in self.urls:
+        for url in self.urls: 
             time.sleep(1)
             house = URHouse(url)
-            #if house.count > 0 : 
+            #一个团地优惠房子的个数>0是，优惠团地数自增
+            if house.count > 0:
+                #优惠团地的个数
+                 self.discount = self.discount + 1
             houses.append(house)
         return houses
             
-    def get_all_urls(self):
+    def get_all_urls(self, enterpoint):
         list = []
         
         url = "http://www.ur-net.go.jp/akiya/tokyo/20_{dcd}.html"
         
-        content = urllib2.urlopen(self.enterpoint).read()
+        content = urllib2.urlopen(enterpoint).read()
         soup = BeautifulSoup(content, "html.parser")
         for link in soup.select('tr.divisionlink td.danchi'):
             # 割引制度の個数
@@ -84,9 +143,40 @@ class URHouseList(object):
             
     def __len__(self):
         return len(self.houses)
-        
+    
+    
+    def notify(self, mailler):
+        """ """
+        flag = False
+        if not os.path.exists(self.path) and self.discount > 0:
+            flag = True
 
+        if os.path.exists(self.path):
+            oldResult = self.get_result()
+            newResult = "%s" %(self)
+            if oldResult != newResult:
+                flag = True
+        
+        if flag :
+            print("发送邮件\n")
+            mailler.sendmail()
+        
+            #结果保存
+            self.save_result()
+        
+        return flag
+    
+    def save_result(self):
+        FileUtils.put_all_content(self.path, str(self))
+        
+    def get_result(self):
+        #获取保存结果
+        return FileUtils.get_all_content(self.path)
+
+        
 class URHouse(object):
+    ''' 团地对象 '''
+    
     def __init__(self, url):
         #主页
         self.url = url
@@ -153,31 +243,6 @@ class URHouse(object):
 
         return ""
         
-    def should_be_sendmail(self):
-        """ """
-        path = "./" + datetime.datetime.now().strftime('%Y-%m-%d') + "-" + str(url[-9, -5]) + ".tmp"
-        
-        if not os.path.exists(path) and self.count > 0:
-            return True
-
-        if os.path.exists(path):
-            str = self.get_all_content(path)
-            if self.get_all_content(path) != self.message:
-                return True
-
-        return False
-
-    def get_all_content(self, path):
-        content = ""
-        for line in codecs.open(path, 'r', "utf_8") :
-            content += line
-        return content
-
-    def put_all_content(self, path, content):
-        file = codecs.open(path, 'w', "utf_8")
-        file.write(content)
-        file.close()
-
     def __str__(self):
         result = ""
         result += "\r\n名称:" + self.name
@@ -196,12 +261,31 @@ class URHouse(object):
 if __name__ == "__main__":
     reload(sys)
     sys.setdefaultencoding('utf-8')
+    
+    
+    if False:
+        #获取所有团地的信息
+        enterpoint = "http://www.ur-net.go.jp/akiya/sonomama/tokyo.html"
+        houses = URHouseManager(enterpoint = enterpoint)
+    else:
+        #获取指定团地的信息
+        urls = [
+                "http://www.ur-net.go.jp/akiya/tokyo/20_3070.html",
+                "http://www.ur-net.go.jp/akiya/tokyo/20_1650.html",
+                "http://www.ur-net.go.jp/akiya/tokyo/20_6400.html",
+                "http://www.ur-net.go.jp/akiya/tokyo/20_2810.html",
+                #"http://www.ur-net.go.jp/akiya/tokyo/20_6771.html",
+            ]
+        houses = URHouseManager(urls = urls)
 
-    enterpoint = "http://www.ur-net.go.jp/akiya/sonomama/tokyo.html"
-    houses = URHouseList(enterpoint)
     print(houses)
     
-    FileUtils.put_all_content("./result.txt", "%s" %(houses))
+    #通知结果
+    houses.notify(SendMailer(
+                 ["xxxxxx@xxxxxx.com", "xxxxxx@qq.com", "63734524@qq.com"],    
+                 "【通知】UR団地情報異動", 
+                 str(houses)
+             ))
     
     print("finished!")
     
